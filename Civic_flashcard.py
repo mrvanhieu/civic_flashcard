@@ -60,7 +60,7 @@ flashcards = [
     {"question": "What are two ways that Americans can participate in their democracy?", "answer": "vote; join a political party; help with a campaign; join a civic group; join a community group; give an elected official your opinion on an issue; call Senators and Representatives; publicly support or oppose an issue or policy; run for office; write to a newspaper"},
     {"question": "When is the last day you can send in federal income tax forms?", "answer": "April 15"},
     {"question": "When must all men register for the Selective Service?", "answer": "at age eighteen (18); between eighteen (18) and twenty-six (26)"},
-    {"question": "What is one reason colonists came to America?", "answer": "freedom; political liberty; religious freedom; economic opportunity; practice their religion; escape persecution"},
+    {"question": "What is one reason colonists came to America?", "answer": "economic opportunity<br/>freedom<br/>political liberty<br/>religious freedom<br/>practice their religion<br/>escape persecution"},
     {"question": "Who lived in America before the Europeans arrived?", "answer": "American Indians; Native Americans"},
     {"question": "What group of people was taken to America and sold as slaves?", "answer": "Africans; people from Africa"},
     {"question": "Why did the colonists fight the British?", "answer": "because of high taxes (taxation without representation); because the British army stayed in their houses (boarding, quartering); because they didn’t have self-government"},
