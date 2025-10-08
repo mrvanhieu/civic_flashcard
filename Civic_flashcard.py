@@ -1,5 +1,7 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import random
+
 
 # 100 Civics Flash Cards for the Naturalization Test
 flashcards = [
@@ -175,7 +177,7 @@ st.markdown(
 
 # shrink title for mobile
 st.markdown(
-    "<h4 style='text-align: center; font-size: 1.5em; color: black;'>🇺🇸 Civics Flash Cards Quiz</h4>",
+    "<h4 style='text-align: center; font-size: 1.5em; color: black;'>🇺🇸 Civics Flash Cards Quiz 2025</h4>",
     unsafe_allow_html=True
 )
 
@@ -211,29 +213,40 @@ if st.session_state.current_index is None:
     pick_new_question()
 
 if st.session_state.current_index is not None:
-    # show question count on top
-    st.markdown(
-        f"<h3 style='text-align:center; color: gray;'>Question {len(st.session_state.shown_indices)} of {len(flashcards)}</h3>",
-        unsafe_allow_html=True
-    )
     card = flashcards[st.session_state.current_index]
-    # Show answer or next question button
+    # question count and mute toggle aligned at top
+    col_q, col_m = st.columns([7, 3])
+    with col_q:
+        st.markdown(
+            f"<h3 style='text-align:left; color: gray; margin:0;'>Question {len(st.session_state.shown_indices)} of {len(flashcards)}</h3>",
+            unsafe_allow_html=True
+        )
+    with col_m:
+        mute = st.checkbox(
+            "Mute Audio",
+            value=True,
+            help="Toggle question audio",
+            key="mute_tts",
+            label_visibility="visible"
+        )
+    # Show answer or next question
     if not st.session_state.show_answer:
         st.button("Show Answer", key="show_answer_btn", on_click=show_answer_callback)
     else:
         st.button("Next Question", key="next_btn", on_click=next_question_callback)
 
+    # Flashcard container
     st.markdown(
         f"""
-        <div style='
-            font-size:1.2em;        /* reduced from 2em */
+        <div style=' 
+            font-size:1.2em;
             text-align:center;
-            margin: 2em 0;
-            border: 2px solid #eee;
-            border-radius: 16px;
-            padding: 2em;
-            background: #fff;
-            color: black;
+            margin:0.5rem 0;
+            border:2px solid #eee;
+            border-radius:16px;
+            padding:2em;
+            background:#fff;
+            color:black;
         '>
             <b>Question:</b><br>{card['question']}
             <br>
@@ -242,16 +255,45 @@ if st.session_state.current_index is not None:
         """,
         unsafe_allow_html=True
     )
+    # Speak question aloud via Web Speech API
+    components.html(f"""
+    <div id='speech-text' style='display:none'>{card['question']}</div>
+    <script>
+        const mute = {str(mute).lower()};
+        if (!mute) {{
+            // cancel any ongoing speech
+            window.speechSynthesis.cancel();
+            function speak() {{
+                const text = document.getElementById('speech-text').innerText;
+                const utter = new SpeechSynthesisUtterance(text);
+                // select a natural-sounding English voice
+                const voices = window.speechSynthesis.getVoices();
+                const voice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('google')) || voices[0];
+                if (voice) utter.voice = voice;
+                utter.pitch = 1.1; // slightly higher pitch
+                utter.rate = 1.0;  // normal rate
+                utter.volume = 1.0;
+                window.speechSynthesis.speak(utter);
+            }}
+            if (window.speechSynthesis.getVoices().length) {{
+                speak();
+            }} else {{
+                window.speechSynthesis.onvoiceschanged = speak;
+            }}
+        }}
+    </script>
+    """, height=0)
     # Restart button below flashcard
     st.markdown("<div style='text-align:center; margin-top:1em;'>", unsafe_allow_html=True)
     st.button("Restart Quiz", key="restart_btn", on_click=restart_callback)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.success("🎉 You have completed all 100 questions!")
-    if st.button("Restart Quiz", on_click=restart_callback):
+    if st.button("Restart Quiz", key="restart_btn_end", on_click=restart_callback):
         pass
 
 st.markdown(
     "<div style='text-align:center; margin-top:2em; color: #888;'>Created for U.S. Naturalization Test practice</div>",
     unsafe_allow_html=True
 )
+
