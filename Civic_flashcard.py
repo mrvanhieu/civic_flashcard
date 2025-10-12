@@ -110,6 +110,18 @@ flashcards = [
 
 st.set_page_config(page_title="Civics Flash Cards", layout="centered")
 
+# Initialize session state variables first
+if "shown_indices" not in st.session_state:
+    st.session_state.shown_indices = []
+if "current_index" not in st.session_state:
+    st.session_state.current_index = None
+if "show_answer" not in st.session_state:
+    st.session_state.show_answer = False
+if "favorites" not in st.session_state:
+    st.session_state.favorites = set()
+if "favorites_mode" not in st.session_state:
+    st.session_state.favorites_mode = False
+
 # remove top whitespace in main container
 st.markdown(
     """
@@ -175,23 +187,17 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# shrink title for mobile
-st.markdown(
-    "<h4 style='text-align: center; font-size: 1.5em; color: black;'>🇺🇸 Civics Flash Cards Quiz 2025</h4>",
-    unsafe_allow_html=True
-)
-
-if "shown_indices" not in st.session_state:
-    st.session_state.shown_indices = []
-if "current_index" not in st.session_state:
-    st.session_state.current_index = None
-if "show_answer" not in st.session_state:
-    st.session_state.show_answer = False
-
+# Define functions before using them
 def pick_new_question():
-    remaining_indices = list(set(range(len(flashcards))) - set(st.session_state.shown_indices))
-    if remaining_indices:
-        st.session_state.current_index = random.choice(remaining_indices)
+    if st.session_state.favorites_mode and st.session_state.favorites:
+        # Only pick from favorites
+        available_indices = list(st.session_state.favorites - set(st.session_state.shown_indices))
+    else:
+        # Pick from all questions
+        available_indices = list(set(range(len(flashcards))) - set(st.session_state.shown_indices))
+    
+    if available_indices:
+        st.session_state.current_index = random.choice(available_indices)
         st.session_state.shown_indices.append(st.session_state.current_index)
         st.session_state.show_answer = False
     else:
@@ -208,17 +214,91 @@ def restart_callback():
     st.session_state.current_index = None
     st.session_state.show_answer = False
 
+def toggle_favorite():
+    current_idx = st.session_state.current_index
+    if current_idx in st.session_state.favorites:
+        st.session_state.favorites.remove(current_idx)
+    else:
+        st.session_state.favorites.add(current_idx)
+
+def toggle_favorites_mode():
+    st.session_state.favorites_mode = not st.session_state.favorites_mode
+    # Restart quiz when switching modes
+    restart_callback()
+
+# shrink title for mobile
+st.markdown(
+    "<h4 style='text-align: center; font-size: 1.5em; color: black;'>🇺🇸 Civics Flash Cards Quiz 2025</h4>",
+    unsafe_allow_html=True
+)
+
+# Favorites mode toggle with count
+favorites_text = "Favorites Only" if st.session_state.favorites_mode else "All Questions"
+favorites_count = f" (❤️ {len(st.session_state.favorites)})" if st.session_state.favorites else ""
+button_text = f"📚 {favorites_text}{favorites_count}"
+
+if st.button(button_text, key="mode_toggle", on_click=toggle_favorites_mode):
+    pass
+
 # On first load or after restart
+
+def pick_new_question():
+    if st.session_state.favorites_mode and st.session_state.favorites:
+        # Only pick from favorites
+        available_indices = list(st.session_state.favorites - set(st.session_state.shown_indices))
+    else:
+        # Pick from all questions
+        available_indices = list(set(range(len(flashcards))) - set(st.session_state.shown_indices))
+    
+    if available_indices:
+        st.session_state.current_index = random.choice(available_indices)
+        st.session_state.shown_indices.append(st.session_state.current_index)
+        st.session_state.show_answer = False
+    else:
+        st.session_state.current_index = None
+
+def show_answer_callback():
+    st.session_state.show_answer = True
+
+def next_question_callback():
+    pick_new_question()
+
+def restart_callback():
+    st.session_state.shown_indices = []
+    st.session_state.current_index = None
+    st.session_state.show_answer = False
+
+def toggle_favorite():
+    current_idx = st.session_state.current_index
+    if current_idx in st.session_state.favorites:
+        st.session_state.favorites.remove(current_idx)
+    else:
+        st.session_state.favorites.add(current_idx)
+
+def toggle_favorites_mode():
+    st.session_state.favorites_mode = not st.session_state.favorites_mode
+    # Restart quiz when switching modes
+    restart_callback()
 if st.session_state.current_index is None:
     pick_new_question()
 
 if st.session_state.current_index is not None:
     card = flashcards[st.session_state.current_index]
+    
+    # Check if favorites mode has questions available
+    if st.session_state.favorites_mode and not st.session_state.favorites:
+        st.warning("No favorites added yet! Add some questions to favorites first, or switch to 'All Questions' mode.")
+        st.stop()
+    
+    # Get total count based on mode
+    total_count = len(st.session_state.favorites) if st.session_state.favorites_mode else len(flashcards)
+    
     # question count and mute toggle aligned at top
     col_q, col_m = st.columns([7, 3])
     with col_q:
+        mode_text = " (Favorites)" if st.session_state.favorites_mode else ""
         st.markdown(
-            f"<h3 style='text-align:left; color: gray; margin:0;'>Question {len(st.session_state.shown_indices)} of {len(flashcards)}</h3>",
+            f"<h3 style='text-align:left; color: gray; margin:0;'>Question {len(st.session_state.shown_indices)} of {total_count}{mode_text}</h3>",
             unsafe_allow_html=True
         )
     with col_m:
@@ -229,7 +309,8 @@ if st.session_state.current_index is not None:
             key="mute_tts",
             label_visibility="visible"
         )
-    # Show answer or next question
+    
+    # Show Answer/Next Question button
     if not st.session_state.show_answer:
         st.button("Show Answer", key="show_answer_btn", on_click=show_answer_callback)
     else:
@@ -283,14 +364,38 @@ if st.session_state.current_index is not None:
         }}
     </script>
     """, height=0)
-    # Restart button below flashcard
+    
+    # Favorite button (top right)
+    col_space, col_favorite = st.columns([3, 1])
+    with col_favorite:
+        st.markdown("<div style='text-align:right; margin-top:1em;'>", unsafe_allow_html=True)
+        # Heart button for favorites
+        is_favorite = st.session_state.current_index in st.session_state.favorites
+        heart_icon = "❤️" if is_favorite else "🤍"
+        heart_text = "Remove" if is_favorite else "Favorite"
+        st.button(f"{heart_icon}", key="fav_btn", on_click=toggle_favorite, help=f"{heart_text} this question")
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Restart button (centered below favorite)
     st.markdown("<div style='text-align:center; margin-top:1em;'>", unsafe_allow_html=True)
     st.button("Restart Quiz", key="restart_btn", on_click=restart_callback)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
-    st.success("🎉 You have completed all 100 questions!")
-    if st.button("Restart Quiz", key="restart_btn_end", on_click=restart_callback):
-        pass
+    if st.session_state.favorites_mode:
+        if st.session_state.favorites:
+            st.success(f"🎉 You have completed all {len(st.session_state.favorites)} favorite questions!")
+        else:
+            st.info("No favorites added yet! Switch to 'All Questions' mode to start studying.")
+    else:
+        st.success("🎉 You have completed all 100 questions!")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Restart Quiz", key="restart_btn_end", on_click=restart_callback):
+            pass
+    with col2:
+        if st.button("Switch Mode", key="switch_mode_end", on_click=toggle_favorites_mode):
+            pass
 
 st.markdown(
     "<div style='text-align:center; margin-top:2em; color: #888;'>Created for U.S. Naturalization Test practice</div>",
